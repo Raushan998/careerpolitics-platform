@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
+ActiveRecord::Schema[7.0].define(version: 2026_05_29_100600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "ltree"
@@ -501,11 +501,11 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
     t.datetime "created_at", null: false
     t.text "processed_html", null: false
     t.bigint "tag_id"
-    t.bigint "trend_id"
+     t.bigint "trend_id"
     t.datetime "updated_at", null: false
     t.index ["article_id"], name: "index_context_notes_on_article_id"
     t.index ["tag_id"], name: "index_context_notes_on_tag_id"
-    t.index ["trend_id"], name: "index_context_notes_on_trend_id"
+     t.index ["trend_id"], name: "index_context_notes_on_trend_id"
   end
 
   create_table "context_notifications", force: :cascade do |t|
@@ -695,6 +695,25 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
     t.check_constraint "broadcast_config IS NOT NULL", name: "events_broadcast_config_null"
   end
 
+  create_table "exams", force: :cascade do |t|
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.integer "default_duration_minutes", default: 30, null: false
+    t.integer "default_question_count", default: 20, null: false
+    t.text "description"
+    t.string "difficulty"
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "published", default: false, null: false
+    t.string "slug", null: false
+    t.bigint "subforem_id"
+    t.text "syllabus_context"
+    t.datetime "updated_at", null: false
+    t.index ["published", "subforem_id", "position"], name: "index_exams_on_published_query", where: "(published = true)"
+    t.index ["slug", "subforem_id"], name: "index_exams_on_slug_and_subforem_id", unique: true
+    t.index ["subforem_id"], name: "index_exams_on_subforem_id"
+  end
+
   create_table "feed_configs", force: :cascade do |t|
     t.integer "all_time_tag_count_max", default: 0
     t.integer "all_time_tag_count_min", default: 0
@@ -723,9 +742,7 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
     t.integer "recent_tag_count_min", default: 0
     t.float "recently_active_past_day_bonus_weight", default: 0.0, null: false
     t.float "score_weight", default: 1.0
-    t.float "semantic_match_weight", default: 0.0
     t.float "shuffle_weight", default: 0.0, null: false
-    t.integer "status_target", default: 0
     t.float "status_weight", default: 0.0, null: false
     t.float "subforem_follow_weight", default: 0.0, null: false
     t.float "tag_follow_weight", default: 1.0
@@ -1041,9 +1058,64 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
     t.index ["user_id", "mentionable_id", "mentionable_type"], name: "index_mentions_on_user_id_and_mentionable_id_mentionable_type", unique: true
   end
 
+  create_table "mock_test_answers", force: :cascade do |t|
+    t.text "ai_feedback"
+    t.float "awarded_points"
+    t.boolean "correct"
+    t.datetime "created_at", null: false
+    t.bigint "mock_test_question_id", null: false
+    t.bigint "mock_test_session_id", null: false
+    t.jsonb "selected_options", default: []
+    t.text "text_answer"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["mock_test_question_id"], name: "index_mock_test_answers_on_mock_test_question_id", unique: true
+    t.index ["mock_test_session_id"], name: "index_mock_test_answers_on_mock_test_session_id"
+    t.index ["user_id"], name: "index_mock_test_answers_on_user_id"
+  end
+
+  create_table "mock_test_questions", force: :cascade do |t|
+    t.jsonb "correct_answer"
+    t.datetime "created_at", null: false
+    t.text "explanation"
+    t.bigint "mock_test_session_id", null: false
+    t.jsonb "options", default: []
+    t.float "points", default: 1.0, null: false
+    t.integer "position", null: false
+    t.text "prompt", null: false
+    t.string "question_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["mock_test_session_id", "position"], name: "index_mock_test_questions_on_mock_test_session_id_and_position", unique: true
+    t.index ["mock_test_session_id"], name: "index_mock_test_questions_on_mock_test_session_id"
+  end
+
+  create_table "mock_test_sessions", force: :cascade do |t|
+    t.string "ai_generation_version"
+    t.datetime "created_at", null: false
+    t.string "difficulty"
+    t.integer "duration_minutes"
+    t.bigint "exam_id", null: false
+    t.text "generation_error"
+    t.datetime "graded_at"
+    t.float "max_score"
+    t.integer "question_count"
+    t.float "score"
+    t.datetime "started_at"
+    t.string "status", default: "generating", null: false
+    t.bigint "subforem_id"
+    t.datetime "submitted_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["exam_id"], name: "index_mock_test_sessions_on_exam_id"
+    t.index ["status"], name: "index_mock_test_sessions_on_status"
+    t.index ["subforem_id"], name: "index_mock_test_sessions_on_subforem_id"
+    t.index ["user_id", "created_at"], name: "index_mock_test_sessions_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_mock_test_sessions_on_user_id"
+  end
+
   create_table "navigation_links", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.text "description"
+     t.text "description"
     t.boolean "display_only_when_signed_in", default: false
     t.integer "display_to", default: 0, null: false
     t.string "icon"
@@ -1667,14 +1739,10 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
   end
 
   create_table "tag_subforem_relationships", force: :cascade do |t|
-    t.string "bg_color_hex"
     t.datetime "created_at", null: false
-    t.string "pretty_name"
-    t.text "short_summary"
     t.bigint "subforem_id", null: false
     t.boolean "supported", default: true
     t.bigint "tag_id", null: false
-    t.string "text_color_hex"
     t.datetime "updated_at", null: false
     t.index ["subforem_id"], name: "index_tag_subforem_relationships_on_subforem_id"
     t.index ["tag_id"], name: "index_tag_subforem_relationships_on_tag_id"
@@ -1735,7 +1803,7 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
   create_table "trend_run_histories", force: :cascade do |t|
     t.string "trend", null: false
     t.string "trend_slug", null: false
-    t.boolean "published", default: false, null: false
+     t.boolean "published", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_trend_run_histories_on_created_at"
@@ -1799,10 +1867,8 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
     t.jsonb "recent_tags", default: []
     t.jsonb "recent_users", default: []
     t.jsonb "recently_viewed_articles", default: []
-    t.jsonb "semantic_interest_profile", default: {}
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["semantic_interest_profile"], name: "index_user_activities_on_semantic_interest_profile", using: :gin
     t.index ["user_id"], name: "index_user_activities_on_user_id"
   end
 
@@ -2112,6 +2178,7 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
   add_foreign_key "emails", "user_queries"
   add_foreign_key "events", "organizations"
   add_foreign_key "events", "users"
+  add_foreign_key "exams", "subforems"
   add_foreign_key "feed_events", "articles", on_delete: :cascade
   add_foreign_key "feed_events", "users", on_delete: :nullify
   add_foreign_key "feed_import_items", "articles", on_delete: :nullify
@@ -2131,6 +2198,13 @@ ActiveRecord::Schema[7.0].define(version: 2026_04_21_160606) do
   add_foreign_key "lead_submissions", "organization_lead_forms", on_delete: :cascade
   add_foreign_key "lead_submissions", "users", on_delete: :cascade
   add_foreign_key "mentions", "users", on_delete: :cascade
+  add_foreign_key "mock_test_answers", "mock_test_questions"
+  add_foreign_key "mock_test_answers", "mock_test_sessions"
+  add_foreign_key "mock_test_answers", "users"
+  add_foreign_key "mock_test_questions", "mock_test_sessions"
+  add_foreign_key "mock_test_sessions", "exams"
+  add_foreign_key "mock_test_sessions", "subforems"
+  add_foreign_key "mock_test_sessions", "users"
   add_foreign_key "notes", "users", column: "author_id", on_delete: :nullify
   add_foreign_key "notification_subscriptions", "users", on_delete: :cascade
   add_foreign_key "notifications", "organizations", on_delete: :cascade
