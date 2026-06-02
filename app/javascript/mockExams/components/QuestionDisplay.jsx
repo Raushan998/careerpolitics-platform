@@ -1,5 +1,6 @@
 import { h } from 'preact';
 import { KatexText, KatexHtml, hasMath } from './KatexRenderer';
+import { useQuestionTranslation } from '../useQuestionTranslation';
 
 export function QuestionDisplay({
                                   question,
@@ -7,30 +8,67 @@ export function QuestionDisplay({
                                   onSelectOption,
                                   isReview,
                                   language,
+                                  questionNumber,
+                                  totalQuestions,
                                 }) {
   const q = question;
-  const useHindi = language === 'hi' && q.text_hi;
-  const questionText = useHindi ? q.text_hi : q.question_text;
-  const explanation = useHindi && q.explanation_hi ? q.explanation_hi : q.explanation;
+  const wantsHindi = language === 'hi';
+  // Resolves Hindi text from pre-translated columns, then machine translation,
+  // then the original English (with usedFallback set so we can show a notice).
+  const {
+    questionText,
+    options,
+    explanation,
+    usedFallback,
+  } = useQuestionTranslation(q, language, isReview);
+
+  // Raw HTML is only safe for the English source; translated text comes back as
+  // plain strings, so render it through KatexText instead.
+  const showQuestionHtml = !wantsHindi && q.question_html && !hasMath(q.question_text);
+  const showExplanationHtml = !wantsHindi && q.explanation_html && !hasMath(explanation);
 
   return (
     <div class="crayons-card p-6">
-      {/* Section badge */}
+      {/* Question header */}
       <div class="flex items-center justify-between mb-3">
-        <span class="crayons-tag crayons-tag--monochrome fs-xs">
-          {q.section_name}
-        </span>
-        <span class="color-secondary fs-xs">Q{q.position}</span>
+        <div class="flex items-center gap-2">
+          <span class="fw-bold" style={{
+            background: 'var(--accent-brand)', color: '#fff',
+            padding: '3px 12px', borderRadius: '6px',
+            fontSize: '0.8rem', letterSpacing: '0.02em',
+          }}>
+            Q. {questionNumber || q.position}
+          </span>
+          <span class="crayons-tag crayons-tag--monochrome fs-xs">
+            {q.section_name}
+          </span>
+        </div>
+        {totalQuestions > 0 && (
+          <span class="fs-xs color-secondary" style={{
+            background: 'var(--card-secondary-bg)',
+            padding: '2px 8px', borderRadius: '4px',
+          }}>
+            {questionNumber || q.position} of {totalQuestions}
+          </span>
+        )}
       </div>
 
       {/* Question text */}
       <div class="mb-4 fs-l" style={{ lineHeight: '1.6' }}>
-        {!useHindi && q.question_html && !hasMath(q.question_text) ? (
+        {showQuestionHtml ? (
           <div dangerouslySetInnerHTML={{ __html: q.question_html }} />
         ) : (
           <KatexText text={questionText} />
         )}
       </div>
+
+      {/* Translation fallback notice — shown when on-demand translation failed
+          and we are displaying the original English instead of a blank. */}
+      {usedFallback && (
+        <p class="fs-xs color-secondary mb-3" role="status">
+          Translation unavailable — showing the original English.
+        </p>
+      )}
 
       {/* Question SVG (visual reasoning) */}
       {q.question_svg && (
@@ -43,8 +81,8 @@ export function QuestionDisplay({
 
       {/* Options */}
       <div class="flex flex-col gap-2">
-        {(q.options || []).map((opt) => {
-          const optText = useHindi && opt.text_hi ? opt.text_hi : opt.text;
+        {(options || []).map((opt) => {
+          const optText = opt.displayText;
           const isSelected = selectedOption === opt.key;
           const isCorrect = isReview && opt.key === q.correct_option_key;
           const isWrong = isReview && isSelected && !isCorrect;
@@ -74,7 +112,11 @@ export function QuestionDisplay({
                 cursor: isReview ? 'default' : 'pointer',
                 width: '100%',
                 minHeight: '48px',
+                transition: 'all 0.15s ease',
+                position: 'relative',
               }}
+              onMouseEnter={(e) => { if (!isReview) e.currentTarget.style.transform = 'translateX(2px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; }}
               onClick={() => !isReview && onSelectOption(opt.key)}
               disabled={isReview}
             >
@@ -109,6 +151,15 @@ export function QuestionDisplay({
                   <span>{optText}</span>
                 )}
               </div>
+              {!isReview && (
+                <span style={{
+                  fontSize: '0.65rem', color: 'var(--body-color)',
+                  opacity: 0.4, fontFamily: 'monospace',
+                  flexShrink: 0,
+                }} class="hide-mobile">
+                  Press {opt.key}
+                </span>
+              )}
               {isReview && isCorrect && (
                 <span style={{ color: 'var(--accent-success)', fontSize: '1.2rem' }}>✓</span>
               )}
@@ -127,7 +178,7 @@ export function QuestionDisplay({
           style={{ background: 'var(--card-secondary-bg)' }}
         >
           <h4 class="fw-bold mb-2">Explanation</h4>
-          {!useHindi && q.explanation_html && !hasMath(explanation) ? (
+          {showExplanationHtml ? (
             <div dangerouslySetInnerHTML={{ __html: q.explanation_html }} />
           ) : (
             <KatexText text={explanation} />
